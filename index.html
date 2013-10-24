@@ -17,6 +17,7 @@
     		font-size: 12px;
     		border:1px solid black;
     		border-collapse: collapse;
+    		width: 100%;
     	}
     	th, tfoot td{
     		background-color: gray;
@@ -52,6 +53,10 @@
 			width: auto;
 			min-height: 200px;
 			padding: 10px;
+		}
+
+		#pluginContainer {
+			width: 100%;
 		}
     </style>
     <script type="text/javascript">
@@ -251,7 +256,7 @@
 </head>
 <body class='default'>
 <h3>Basic Browser for 'behaviors' table in 'gdrindex': <i><a id="jsonLink" href="#" style="font-weight: normal;">Click here for JSON</a></i></h3>
-    <div id='jqxWidget' style="font-size: 13px; font-family: Verdana; float: left;">
+    <div id='pluginContainer' style="font-size: 13px; font-family: Verdana; float: left;">
     	<table id="jqgrid"><thead id="theHead"></thead><tfoot id="theFoot"></tfoot><tbody id="theBody"></tbody></table>
     	<div id="error" class="error"></div>
     	<div id="loader" class="loader">Loading <img src='img/spinner.gif'></img></div>

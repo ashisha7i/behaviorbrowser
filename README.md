@@ -7,5 +7,7 @@ of *ANY* use whatsoever for public.
 
 Intended to be used for my local trails.
 
-Regards,
+10/24/2013 - Changed the layout
+
+Regards,  
 -Ashish

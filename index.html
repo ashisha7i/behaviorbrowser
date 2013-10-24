@@ -7,6 +7,7 @@
     <script type="text/javascript" src="js/jquery-1.9.0.min.js"></script>
     <script type="text/javascript" src="js/jquery.jqGrid.min.js"></script>
     <script type="text/javascript" src="js/jquery-ui.js"></script>
+    <script type="text/javascript" src="js/jquery.cookie.js"></script>
     <style>
     	body {
     		font-family: Verdana;
@@ -55,6 +56,10 @@
 			padding: 10px;
 		}
 
+		.config, .loader, .header {
+			display:none;
+		}
+
 		#pluginContainer {
 			width: 100%;
 		}
@@ -77,21 +82,37 @@
     	colModel["ques_mapping_id"] = "Question <br>Mapping Id";
     	colModel["multitrack_flag"] = "Multitrack";
 
+    	var host  = "";
+    	var index = "";
+    	var table = "";
+
     	var queryUrl = 'http://localhost:9200/_search?_index=gdrindex&_type=behavior&pretty=true&size=';
 
  		$(document).ready(function () {
- 			var dc = new Date();
- 			$("#loader").show();
+
+ 			if($.cookie("bbcfgHost") && $.cookie("bbcfgIndex") && $.cookie("bbcfgTable")){
+ 				host = $.cookie("bbcfgHost");
+ 				index = $.cookie("bbcfgIndex");
+ 				table = $.cookie("bbcfgTable");
+ 			} else {
+ 				$("#config").show();
+ 				return false;
+ 			}
+ 			
  			// First ajax call to get the dataset size
  			$.ajax({
-				url: 'http://localhost:9200/_count?_index=gdrindex&_type=behavior&pretty=true',
+				url: host + "/_count?_index=" + index + "&_type=" + table,
 				type: 'POST',
 				dataType: 'json',
 				async: false,
+				beforeSend: function() {
+					$("#loader").show();
+				},
 				success: function(dt, Status, jqXHR){
 					//console.log("Got Data :: " + dt.count);
-					queryUrl += dt.count;
+					queryUrl = host + "/_search?_index=" + index + "&_type=" + table + "&size="+dt.count;
 					$("#jsonLink").prop("href",queryUrl);
+					$(".header").show();
 				}
 
 			});
@@ -196,8 +217,10 @@
 
 		function openModal(quesMappingId, theTd){
 			var tdId = theTd.id;
+			var theUrl = host + "/_search?_index=" + index + "&_type=" + table + "&pretty=true&q=question.attributes.ques_mapping_id:" + quesMappingId;
+			console.log(theUrl);
 			$.ajax({
-				url: 'http://localhost:9200/_search?_index=gdrindex&_type=behavior&pretty=true&q=question.attributes.ques_mapping_id:' + quesMappingId,
+				url: theUrl,
 				type: 'POST',
 				dataType: 'json',
 				success: function(data, Status, jqXHR){
@@ -252,14 +275,27 @@
 				return "<img src='img/Transparent.png'></img>";
 			}
 		}
+
+		function setCookies(){
+			var host  = $("#txtHost").val();
+			var index = $("#txtIndex").val();
+			var table = $("#txtTable").val();
+
+			$.cookie("bbcfgHost",  host,  { expires: 365, path: '/' });
+			$.cookie("bbcfgIndex", index, { expires: 365, path: '/' }); 
+			$.cookie("bbcfgTable", table, { expires: 365, path: '/' });
+
+			location.reload();
+		}
     </script>
 </head>
 <body class='default'>
-<h3>Basic Browser for 'behaviors' table in 'gdrindex': <i><a id="jsonLink" href="#" style="font-weight: normal;">Click here for JSON</a></i></h3>
+<h3 class="header">Basic Browser for 'behaviors' table in 'gdrindex': <i><a id="jsonLink" href="#" style="font-weight: normal;">Click here for JSON</a></i></h3>
     <div id='pluginContainer' style="font-size: 13px; font-family: Verdana; float: left;">
     	<table id="jqgrid"><thead id="theHead"></thead><tfoot id="theFoot"></tfoot><tbody id="theBody"></tbody></table>
     	<div id="error" class="error"></div>
     	<div id="loader" class="loader">Loading <img src='img/spinner.gif'></img></div>
+    	<div id="config" class="config">Host : <input type="text" id="txtHost" size="60">&nbsp;Index : <input type="text" id="txtIndex">&nbsp;Table : <input type="text" id="txtTable">&nbsp;<input type="button" value="Set" onClick="setCookies();"></div>
     </div>
     <div id="dialog" class="modal" style="display:none;" title="Screening Question Details">
     	<p>Question Details:</p>

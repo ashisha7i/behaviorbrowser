@@ -63,6 +63,11 @@
 		#pluginContainer {
 			width: 100%;
 		}
+
+		.subtext {
+			color: gray;
+			font-size: 10px;
+		}
     </style>
     <script type="text/javascript">
     	// Define Columns and Their Associated attributes
@@ -86,22 +91,59 @@
     	var index = "";
     	var table = "";
 
-    	var queryUrl = 'http://localhost:9200/_search?_index=gdrindex&_type=behavior&pretty=true&size=';
+    	var queryUrl = 'http://localhost:9200/_search?index=gdrindex&type=behavior&pretty=true&size=';
 
  		$(document).ready(function () {
+
+ 			// Initializing the dialogs
+			$("#dialog" ).dialog({
+				autoOpen: false,
+				modal: true,
+				show: {
+					effect: "blind",
+					duration: 100
+				},
+				hide: {
+					effect: "blind",
+					duration: 100
+				},
+				width: 'auto'
+			});
+
+			$("#config" ).dialog({
+				autoOpen: false,
+				modal: true,
+				show: {
+					effect: "blind",
+					duration: 100
+				},
+				hide: {
+					effect: "blind",
+					duration: 100
+				},
+				width: 'auto',
+				close: function( event, ui ) {
+						location.reload();
+					}
+			});
 
  			if($.cookie("bbcfgHost") && $.cookie("bbcfgIndex") && $.cookie("bbcfgTable")){
  				host = $.cookie("bbcfgHost");
  				index = $.cookie("bbcfgIndex");
  				table = $.cookie("bbcfgTable");
  			} else {
- 				$("#config").show();
+ 				$("#config").dialog("open");
+ 				$("#txtHost").val(window.location.protocol + "//" + window.location.host);
+ 				$("#txtIndex").val("gdrindex");
+ 				$("#txtTable").val("behavior");
+ 				$("#btnSet").focus();
+
  				return false;
  			}
  			
  			// First ajax call to get the dataset size
  			$.ajax({
-				url: host + "/_count?_index=" + index + "&_type=" + table,
+				url: host + "/_count?index=" + index + "&type=" + table,
 				type: 'POST',
 				dataType: 'json',
 				async: false,
@@ -110,9 +152,17 @@
 				},
 				success: function(dt, Status, jqXHR){
 					//console.log("Got Data :: " + dt.count);
-					queryUrl = host + "/_search?_index=" + index + "&_type=" + table + "&size="+dt.count;
+					queryUrl = host + "/_search?index=" + index + "&type=" + table + "&size="+dt.count;
 					$("#jsonLink").prop("href",queryUrl);
 					$(".header").show();
+				}, 
+				error: function(dt, Status, jqXHR){
+					$("#loader").hide();
+					$("#error").html("Error :: <br>" + dt.responseText).show();
+					$("#error").append("<br><br><span style='color:black; font-weight:normal;'><input type='button' value='Clear Configuration and Reload' onClick='resetAndReload();'></span>");
+					//console.log(dt);
+					//console.log(Status);
+					//console.log(jqXHR);
 				}
 
 			});
@@ -147,20 +197,7 @@
 
 			});
 
-			// Initializing the dialog
-			$("#dialog" ).dialog({
-				autoOpen: false,
-				modal: true,
-				show: {
-					effect: "blind",
-					duration: 100
-				},
-				hide: {
-					effect: "blind",
-					duration: 100
-				},
-				width: 'auto'
-			});
+			
 			
 			
 		});
@@ -217,7 +254,7 @@
 
 		function openModal(quesMappingId, theTd){
 			var tdId = theTd.id;
-			var theUrl = host + "/_search?_index=" + index + "&_type=" + table + "&pretty=true&q=question.attributes.ques_mapping_id:" + quesMappingId;
+			var theUrl = host + "/_search?index=" + index + "&type=" + table + "&pretty=true&q=question.attributes.ques_mapping_id:" + quesMappingId;
 			console.log(theUrl);
 			$.ajax({
 				url: theUrl,
@@ -287,15 +324,23 @@
 
 			location.reload();
 		}
+
+		function resetAndReload(){
+			$.removeCookie('bbcfgHost', { path: '/' });
+			$.removeCookie('bbcfgIndex', { path: '/' });
+			$.removeCookie('bbcfgTable', { path: '/' });
+
+			location.reload();
+		}
     </script>
 </head>
 <body class='default'>
 <h3 class="header">Basic Browser for 'behaviors' table in 'gdrindex': <i><a id="jsonLink" href="#" style="font-weight: normal;">Click here for JSON</a></i></h3>
+	<div id="config" class="config" title="Application Not Configured"><p>Please specify the host, index name and table name for 'behavior' index: <br><span class="subtext">(Values are auto filled, if everything looks okay just press 'Set' to set the configuration and reload the application.)</span></p>Host : <input type="text" id="txtHost" size="60">&nbsp;Index : <input type="text" id="txtIndex">&nbsp;Table : <input type="text" id="txtTable">&nbsp;<input type="button" value="Set" onClick="setCookies();" id="btnSet"></div>
     <div id='pluginContainer' style="font-size: 13px; font-family: Verdana; float: left;">
     	<table id="jqgrid"><thead id="theHead"></thead><tfoot id="theFoot"></tfoot><tbody id="theBody"></tbody></table>
     	<div id="error" class="error"></div>
     	<div id="loader" class="loader">Loading <img src='img/spinner.gif'></img></div>
-    	<div id="config" class="config">Host : <input type="text" id="txtHost" size="60">&nbsp;Index : <input type="text" id="txtIndex">&nbsp;Table : <input type="text" id="txtTable">&nbsp;<input type="button" value="Set" onClick="setCookies();"></div>
     </div>
     <div id="dialog" class="modal" style="display:none;" title="Screening Question Details">
     	<p>Question Details:</p>

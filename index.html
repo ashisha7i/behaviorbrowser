@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title id='Description'>Behavior Explorer</title>
+    
+	<link rel="stylesheet" type="text/css" media="screen" href="css/smoothness/jquery-ui-1.10.3.custom.min.css" />
+    <script type="text/javascript" src="js/jquery-1.9.0.min.js"></script>
+    <script type="text/javascript" src="js/jquery.jqGrid.min.js"></script>
+    <script type="text/javascript" src="js/jquery-ui.js"></script>
+    <style>
+    	body {
+    		font-family: Verdana;
+    		font-size: 12px;
+    	}
+    	table {
+    		font-family: Verdana;
+    		font-size: 12px;
+    		border:1px solid black;
+    		border-collapse: collapse;
+    	}
+    	th, tfoot td{
+    		background-color: gray;
+    		color: white;
+    		font-weight: bold;
+    		text-align: left;
+    		padding-left: 5px;
+    		padding-right: 5px;
+    		padding-top: 2px;
+    		padding-bottom: 2px;
+    		border:1px solid black;
+    	}
+    	td {
+    		color: black;
+    		font-weight: normal;
+    		padding-left: 5px;
+    		padding-right: 5px;
+    		padding-top: 2px;
+    		padding-bottom: 2px;
+    		border:1px solid black;
+    	}
+    	tr:nth-child(odd)		{ background-color:#eee; }
+		tr:nth-child(even)		{ background-color:#fff; }
+
+		.error {
+			color: red;
+			font-weight: bold;
+		}
+
+		.modal {
+			border:1px solid black;
+			background-color: white;
+			width: auto;
+			min-height: 200px;
+			padding: 10px;
+		}
+    </style>
+    <script type="text/javascript">
+    	// Define Columns and Their Associated attributes
+    	var colModel = new Array();
+    	colModel["behavior_id"] = "Behavior<br>ID";
+    	colModel["behavior_number"] = "Behavior <br>Number";
+    	colModel["source_behavior_id"] = "Source <br>Behavior Id";
+    	colModel["name"] = "Name";
+    	colModel["description"] = "Description";
+		colModel["status"] = "Status";
+    	colModel["standalone_flag"] = "Standalone";
+    	colModel["foundational_flag"] = "Foundational";
+    	colModel["start_date"] = "Start Date";
+    	colModel["end_date"] = "End Date";
+		
+    	colModel["owner_mapping_id"] = "Owner <br>Mapping Id";
+    	colModel["ques_mapping_id"] = "Question <br>Mapping Id";
+    	colModel["multitrack_flag"] = "Multitrack";
+
+    	var queryUrl = 'http://localhost:9200/_search?_index=gdrindex&_type=behavior&pretty=true&size=';
+
+ 		$(document).ready(function () {
+ 			var dc = new Date();
+ 			$("#loader").show();
+ 			// First ajax call to get the dataset size
+ 			$.ajax({
+				url: 'http://localhost:9200/_count?_index=gdrindex&_type=behavior&pretty=true',
+				type: 'POST',
+				dataType: 'json',
+				async: false,
+				success: function(dt, Status, jqXHR){
+					//console.log("Got Data :: " + dt.count);
+					queryUrl += dt.count;
+					$("#jsonLink").prop("href",queryUrl);
+				}
+
+			});
+
+
+ 			// Second Ajax call to get the actual data
+			$.ajax({
+				url: queryUrl,
+				type: 'POST',
+				dataType: 'json',
+				success: function(data, Status, jqXHR){
+					//console.log("Got Data :: " + data.hits.hits.length);
+					var recArray = data.hits.hits;
+					var recCount = recArray.length;
+					if(recCount > 0){
+						$("#error").html("");
+						// Setup the Headers
+						$("#theHead").append(getHeaderRow());
+						// Get the records
+						for(i=0; i<recCount; i++){
+							var hitObj = recArray[i]; 
+							$("#theBody").append(getTableRow(i, hitObj));
+						}
+						// Set the footer
+						$("#theFoot").append("<tr><td colspan='15'>Total records returned : " + recArray.length + "</td></tr>");
+
+						$("#loader").hide();
+					} else {
+						$("#error").html("Please check if the index is created and then try again.")
+					}
+				}
+
+			});
+
+			// Initializing the dialog
+			$("#dialog" ).dialog({
+				autoOpen: false,
+				modal: true,
+				show: {
+					effect: "blind",
+					duration: 100
+				},
+				hide: {
+					effect: "blind",
+					duration: 100
+				},
+				width: 'auto'
+			});
+			
+			
+		});
+
+		function createTd(value) {
+			if(value) {
+				return "<td>" + value + "</td>";
+			} else {
+				return "<td>--</td>";
+			}
+		}
+
+		function getDate(dateVal){
+			var dt = new Date(dateVal.substring(0,10));
+			//console.log("String --> " + dateVal + " Date -->" + dt);
+			return dt.getMonth() + "/" + dt.getDate() + "/" + dt.getYear();
+		}
+
+		function getHeaderRow(){
+			var strTableHeader = "<tr>";
+			for(var key in colModel){
+				strTableHeader += "<th>" + colModel[key] +"</th>"
+			}
+			strTableHeader += "<th>Track Count</th>";
+			strTableHeader += "</tr>";
+
+			return strTableHeader;
+		}
+
+		function getTableRow(index, hitObj){
+			var row = "<tr>";
+			for(var key in colModel){
+				if(key.indexOf("date") != -1) {
+					//console.log("Date field " + key);
+					row += "<td>"+hitObj._source.attributes[key].substring(0,10)+"</td>";
+				} else if(key.indexOf("ques_mapping_id") != -1) {
+					var quesMappingId = hitObj._source.attributes[key];
+					row += "<td id='q" +index+ "'>" +  quesMappingId +"<img src='img/popup.gif' title='Click to show question details popup.' onClick='openModal("+ quesMappingId +",q"+index+");'></img></td>";					
+				} else if(key.indexOf("_flag") != -1) {
+					var flagVal = hitObj._source.attributes[key];
+					row += "<td>" + getFlag(flagVal) +"</td>";					
+				} else {
+					if(hitObj._source.attributes[key]){
+						row += "<td>"+hitObj._source.attributes[key]+"</td>";
+					} else {
+						row += "<td>&nbsp;</td>";
+					}
+				}
+			}
+			row += "<td>" + hitObj._source.tracks.length + "</td>";
+			row +="</tr>";
+			return row;
+		}
+
+		function openModal(quesMappingId, theTd){
+			var tdId = theTd.id;
+			$.ajax({
+				url: 'http://localhost:9200/_search?_index=gdrindex&_type=behavior&pretty=true&q=question.attributes.ques_mapping_id:' + quesMappingId,
+				type: 'POST',
+				dataType: 'json',
+				success: function(data, Status, jqXHR){
+					//console.log("Got Data :: " + data.hits.hits.length);
+					var recArray = data.hits.hits;
+					var recCount = recArray.length;
+					if(recCount > 0){
+						addQuesAnsDetails(data);
+						$('#dialog').dialog("open");
+						$("#"+tdId).closest("tr").css("background-color","#ffffaa");
+						$( "#dialog" ).dialog({
+							close: function( event, ui ) {
+								$("#"+tdId).closest("tr").css("background-color","");
+							}
+						});
+					} else {
+						$("#error").html("Please check if the index is created and then try again.")
+					}
+				}
+
+			});
+
+			// Test code below
+			/*
+			
+			$('#dialog').html("");
+			$('#dialog').html("Opening for " + quesMappingId);
+			*/
+		}
+
+		function addQuesAnsDetails(data){
+			var quesAttr = data.hits.hits[0]._source.question.attributes;
+			quesData = "<tr><td>" + quesAttr.question_id + "</td><td>" + quesAttr.question_text + "</td><td>" + quesAttr.answer_type + "</td><tr>";
+
+			$("#quesTBody").html("");
+			$("#quesTBody").append(quesData);
+
+			$("#ansTBody").html("");
+			var answers = data.hits.hits[0]._source.question.answers;
+			var ansCount = answers.length;
+			for(i=0; i<ansCount; i++){
+				var row = "<tr><td>" + answers[i].answer_id + "</td><td>" + answers[i].answer_value + "</td><td>" + getFlag(answers[i].correct_answer) + "</td></tr>";
+				$("#ansTBody").append(row);
+			}
+
+		}
+
+		function getFlag(value){
+			if(value == 'Y'){
+				return "<img src='img/flag_" + value + ".gif'></img>";
+			} else {
+				return "<img src='img/Transparent.png'></img>";
+			}
+		}
+    </script>
+</head>
+<body class='default'>
+<h3>Basic Browser for 'behaviors' table in 'gdrindex': <i><a id="jsonLink" href="#" style="font-weight: normal;">Click here for JSON</a></i></h3>
+    <div id='jqxWidget' style="font-size: 13px; font-family: Verdana; float: left;">
+    	<table id="jqgrid"><thead id="theHead"></thead><tfoot id="theFoot"></tfoot><tbody id="theBody"></tbody></table>
+    	<div id="error" class="error"></div>
+    	<div id="loader" class="loader">Loading <img src='img/spinner.gif'></img></div>
+    </div>
+    <div id="dialog" class="modal" style="display:none;" title="Screening Question Details">
+    	<p>Question Details:</p>
+    	<table id="quesDetails"><thead><th>Question ID</th><th>Question Text</th><th>Answer Type</th></thead><tbody id="quesTBody"></tbody></table>
+    	<p>Answer Details</p>
+    	<table id="ansDetails"><thead><th>Answer Id</th><th>Answer Value</th><th>Correct</th></thead><tbody id="ansTBody"></tbody></table>
+    </div>
+</body>
+</html>
